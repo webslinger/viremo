@@ -1,165 +1,223 @@
+/**
+ * Browser Module
+ * @module browser
+ */
+
+/* Package Dependencies */
 const puppeteer = require('puppeteer');
-const fs = require('fs-extra');
-const imagemin = require('imagemin');
-const imageminPngquant = require('imagemin-pngquant');
+const colors = require('colors');
 
-// statistics
-let warnings = [];
-let errors = [];
-let analysis = [];
+/* Local Dependencies */
+let filesystem = require('./filesystem');
 
+/**
+ * Crawl and Capture the Website
+ * @param {Config} website
+ * @param {string} website.label
+ * @param {string} website.url
+ * @param {Object[]} website.viewports
+ * @param {Object[]} website.paths
+ * @param {string[]} website.shell
+ * @param {Settings} settings
+ * @param {string} settings.shots_dir
+ * @param {string} settings.reference_dir
+ * @param {string} settings.screenshot_dir
+ * @param {string} settings.output_dir
+ * @param {boolean} settings.baseline_mode
+ * @param {boolean} log - optional
+ * @returns {Object} { warning: [], errors: [], analysis: [..] }
+ */
+exports.process = async (website, settings, log = true) => {
 
-module.exports = {
-    process: async (website, config) => {
+    const browser = await puppeteer.launch({ignoreHTTPSErrors: true, headless: true});
 
-        let validatePath = async (domain, label) => {
-            if (!fs.existsSync(domain)) {
-                fs.mkdirSync(domain);
-            }
-            process.chdir(domain);
-            if (!fs.existsSync(label)) {
-                fs.mkdirSync(label);
-                process.chdir(label);
-            }
-            process.chdir(config.app_dir);
-            process.chdir(config.screenshot_dir);
-            return domain + '/' + label + '/';
-        };
+    let response = {
+        warnings: [],
+        errors: [],
+        analysis: []
+    };
 
-        fs.emptyDir(`${config.screenshot_dir}${config.target_website}`);
-        if (config.baseline_mode) {
-            fs.emptyDir(`${config.reference_dir}${config.target_website}`)
-        }
+    /** Runs for each viewport configured */
+    viewportLoop:
+        for (let viewport of website.viewports) {
+            let page = await browser.newPage();
+            let selector = null;
+            let dir = `${viewport.label}/`;
 
-        const browser = await puppeteer.launch({ignoreHTTPSErrors: true});
-        let page = await browser.newPage();
-        let selector = null;
-        let save_path = null;
+            await page.setViewport({
+                width: viewport.dims[0],
+                height: viewport.dims[1]
+            });
 
-        await page.setViewport({
-            width: 1200,
-            height: 1768
-        });
+            if (log)
+                console.log(`\nAnalyzing ${website.label} [${viewport.label}]`.blue);
 
-        process.chdir(config.app_dir);
-        process.chdir(config.screenshot_dir);
+            /** Check each page configured */
+            for (let path of website.paths) {
+                if (log)
+                    console.log(`Opening ${website.url}${path.path}`);
 
-        console.log(`Analyzing ${website.label}`.blue);
-
-        if (website.paths.length) {
-            for (let p = 0; p < website.paths.length; p++) {
-                console.log(`Opening ${website.url}${website.paths[p].path}`);
                 try {
-                    await page.goto(website.url + website.paths[p].path);
+                    await page.goto(`${website.url}${path.path}`);
                 } catch (e) {
-                    errors.push(`Page Note Found: ${website.url}${website.paths[p].path}`);
-                    continue;
+                    response.errors.push(`Page Not Found: ${website.url}${path.path}`);
+                    break viewportLoop;
                 }
-                selector = await page.$('body');
-                if (selector) {
-                    save_path = await validatePath(website.label, website.paths[p].label);
-                    selector.screenshot({path: `${save_path}fullpage.png`});
-                    if (!config.baseline_mode) {
-                        if (!fs.existsSync(`${config.app_dir}/${config.reference_dir}${save_path}fullpage.png`)) {
-                            errors.push(`Path ${website.paths[p].path} has no reference images. Please re-establish baseline images.`);
+
+                try {
+                    await page.waitForSelector('body', { timeout: 10000 });
+                    selector = await page.$('body');
+                    if (!settings.baseline_mode && !filesystem.referenceExists(website.label, path.label, `${dir}fullpage.png`, settings)) {
+                        response.errors.push(`Path ${path.path} has no reference images. Please re-establish baseline images.`);
+                        break viewportLoop;
+                    }
+                    await selector.screenshot({
+                        path: `${settings.screenshot_dir}${website.label}/${path.label}/${dir}fullpage.png`
+                    });
+                } catch (e) {
+                    response.errors.push("Page did not load." + `${e}`);
+                    break viewportLoop;
+                }
+
+                if (path.shell) {
+                    if (log)
+                        console.log("\tCapturing Shell Elements...".blue);
+
+                    for (let element of website.shell) {
+                        try {
+                            await page.waitForSelector(element, { timeout: 10000 });
+                            selector = await page.$(element);
+                            await selector.screenshot({
+                                path: `${settings.screenshot_dir}${website.label}/${path.label}/${dir}${element.replace(/\s\./g,'_')}.png`
+                            });
+                            response.analysis.push({
+                                website: website.label,
+                                path: path.label,
+                                viewport: viewport.label,
+                                image: `${dir}${element.replace(/\s\./g,'_')}.png`
+                            })
+                        } catch (e) {
+                            if (e.name == "TimeoutError") {
+                                response.warnings.push({
+                                    message: `Selector "${element}" is null.`,
+                                    path: `${viewport.label}: ${path.label}`
+                                });
+                            } else {
+                                if (e.message.match("not visible")) {
+                                    response.warnings.push({
+                                        message: `Selector "${element}" is likely not visible.`,
+                                        path: `${viewport.label}: ${path.label}`
+                                    });
+                                } else {
+                                    response.errors.push(`${e}`);
+                                    break viewportLoop;
+                                }
+                            }
                         }
                     }
                 }
-                if (website.paths[p].shell) {
-                    console.log("\tCapturing Shell Elements...".blue);
-                    for (let i = 0; i < website.shell.length; i++) {
+
+                if (path.elements) {
+                    if (log)
+                        console.log("\tCapturing Page Elements...".blue);
+
+                    for (let element of path.elements) {
                         try {
-                            await page.waitForSelector(website.shell[i], { timeout: 1000 });
-                        } catch (e) {}
-                        selector = await page.$(website.shell[i]);
-                        if (selector) {
-                            save_path = await validatePath(website.label, website.paths[p].label);
-                            await selector.screenshot({path: `${save_path}${website.shell[i]}`.replace(/\s\./g, '_') + ".png"});
-                            analysis.push({
+                            await page.waitForSelector(element, { timeout: 10000 });
+                            selector = await page.$(element);
+                            await selector.screenshot({
+                                path: `${settings.screenshot_dir}${website.label}/${path.label}/${dir}${element.replace(/\s\./g,'_')}.png`
+                            });
+                            response.analysis.push({
                                 website: website.label,
-                                path: website.paths[p].label,
-                                image: `${website.shell[i]}`.replace(/\s\./g, '_') + '.png'
-                            });
-                        } else {
-                            warnings.push({
-                                message: `Selector "${website.shell[i]}" is null.`,
-                                path: website.paths[p].path
-                            });
-                        }
-                    }
-                }
-                if (website.paths[p].elements.length) {
-                    console.log("\tCapturing Page Elements...".blue);
-                    for (let e = 0; e < website.paths[p].elements.length; e++) {
-                        try {
-                            await page.waitForSelector(website.paths[p].elements[e], { timeout: 1000 });
-                        } catch (e) {}
-                        selector = await page.$(website.paths[p].elements[e]);
-                        if (selector) {
-                            save_path = await validatePath(website.label, website.paths[p].label);
-                            await selector.screenshot({path: `${save_path}${website.paths[p].elements[e]}`.replace(/\s\./g, '_') + '.png'});
-                            analysis.push({
-                                website: website.label,
-                                path: website.paths[p].label,
-                                image: `${website.paths[p].elements[e]}`.replace(/\s\./g, '_') + '.png'
-                            });
-                        } else {
-                            warnings.push({
-                                message: `Selector "${website.paths[p].elements[e]}" is null.`,
-                                path: website.paths[p].path
-                            });
+                                path: path.label,
+                                viewport: viewport.label,
+                                image: `${dir}${element.replace(/\s\./g, '_')}.png`
+                            })
+                        } catch (e) {
+                            if (e.name == "TimeoutError") {
+                                response.warnings.push({
+                                    message: `Selector "${element}" is null.`,
+                                    path: `${viewport.label}: ${path.label}`
+                                });
+                            } else {
+                                if (e.message.match("not visible")) {
+                                    response.warnings.push({
+                                        message: `Selector "${element}" is likely not visible.`,
+                                        path: `${viewport.label}: ${path.label}`
+                                    });
+                                } else {
+                                    response.errors.push(`${e}`);
+                                    break viewportLoop;
+                                }
+                            }
                         }
                     }
                 }
             }
-        } else {
-            errors.push("No Paths Specified.");
         }
 
-        await browser.close();
+    await browser.close();
 
-        if (config.baseline_mode) {
-            process.chdir(config.app_dir);
-            await fs.copy(`${config.screenshot_dir}${config.target_website}`, `${config.reference_dir}${config.target_website}`);
-            (async () => {
-                const screenshots = await imagemin([`screenshots_reference/${config.target_website}/*.png`], {
-                    plugins: [
-                        imageminPngquant({
-                            strip: true,
-                            quality: [0.6,0.8]
-                        })
-                    ]
-                });
-            })();
-            console.log("Baseline images created!".green);
-            return false;
-        } else {
-            if (!errors.length) {
-                console.log("Capturing complete.".green);
-                if (warnings.length) {
-                    warnings.forEach((warning) => {
-                        console.log(`WARNING:\t${warning.message}`.yellow);
-                        console.log(`\t\t${warning.path}`.yellow)
-                    });
+    if (log)
+        console.log("\nCapturing complete.\n".green);
+
+    if (settings.baseline_mode) {
+        if (log)
+            console.log("\nEstablishing baseline images...".blue);
+
+        let baselineImages = await filesystem.copyToBaseline(website.label, settings);
+        if (!baselineImages)
+            response.errors.push("Failed to create baseline images.\n");
+        else
+            if (log) console.log("\n\nComplete.\n".blue);
+    }
+
+    return response;
+};
+
+/**
+ * Validates website configuration
+ * @param {Object} website
+ * @param {string} website.label
+ * @param {string} website.url
+ * @param {Object[]} website.viewports
+ * @param {Object[]} website.paths
+ * @param {Object[]} website.shell
+ * @returns {boolean}
+ */
+exports.validate = (website) => {
+    if (typeof website != "object")
+        return false;
+
+    try {
+        if (!website.url) return false;
+        if (!website.label) return false;
+        if (!website.shell) return false;
+        if (!website.paths) return false;
+        if (!website.paths.length) return false;
+        if (!website.viewports) return false;
+        if (!website.viewports.length) return false;
+    } catch (e) {
+        return false;
+    }
+
+    for (let viewport of website.viewports) {
+        if (typeof viewport.label != "string") return false;
+        if (!viewport.dims.length === 2) return false;
+        if (isNaN(viewport.dims[0]) || isNaN(viewport.dims[1])) return false;
+    }
+
+    for (let path of website.paths) {
+        if (typeof path.path == "undefined") return false;
+        if (path.elements && path.elements.length) {
+            for (let element of path.elements) {
+                if (typeof element != "string") {
+                    return false;
                 }
-                (async () => {
-                    const screenshots = await imagemin([`screenshots_reference/${config.target_website}/*.png`], {
-                        plugins: [
-                            imageminPngquant({
-                                strip: true,
-                                quality: [0.6,0.8]
-                            })
-                        ]
-                    });
-                })();
-                return analysis;
-            } else {
-                for (error of errors) {
-                    console.log(`${error}`.red);
-                }
-                console.log('Terminating.'.red);
             }
-            return false;
         }
     }
+
+    return website;
 };

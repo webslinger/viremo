@@ -1,52 +1,95 @@
-const fs = require('fs-extra');
+/* Package Dependencies */
+const colors = require('colors');
 
-// local modules
+// Local Dependencies
 let browser = require('./app/browser');
-let differ = require('./app/differ');
+let images = require('./app/images');
+let filesystem = require('./app/filesystem');
+let output = require('./app/output');
 
-// config
-let config = require('./config/settings');
-let websiteConfig = './config/websites/default';
+// runtime settings
+let settings = require('./app/config/settings').default;
+let websiteConfig = settings.default_config;
+let website = null;
 
-let args = [];
-
+/** Process CLI Arguments */
 process.argv.forEach(function(val,index,array) {
-    args.push(val);
     if (val.match('-set-baseline')) {
-        config.baseline_mode = true;
+        settings.baseline_mode = true;
     }
     if (val.match(/\-use\:.*/)) {
-        websiteConfig = `./config/websites/${val.split(':')[1].trim()}`;
+        websiteConfig = `./app/config/websites/${val.split(':')[1].trim()}`;
     }
 });
 
+/** Set the website configuration. */
 try {
     website = require(websiteConfig);
-    config.target_website = website.label;
 } catch (e) {
-    throw `Error: Cannot find module '${websiteConfig}'`.red;
+    console.log(`Error: Cannot find module '${websiteConfig}' :: ${e}`.red);
+    return;
 }
 
-if (!fs.existsSync(config.shots_dir)) {
-    fs.mkdirSync(config.shots_dir);
-}
-if (!fs.existsSync(config.screenshot_dir)) {
-    fs.mkdirSync(config.screenshot_dir);
-}
-
-if (!fs.existsSync(config.reference_dir)) {
-    fs.mkdirSync(config.reference_dir);
-}
-
-if (!fs.existsSync(config.output_dir)) {
-    fs.mkdirSync(config.output_dir);
-}
-
+/** Run main application */
 (async () => {
-    let process = await browser.process(website, config);
 
-    if (process) {
-        console.log('Analyzing Screenshots for Regressions...'.blue);
-        await differ.analyzeImages(process);
+    /** Validate the config. */
+    let valid_config = browser.validate(website);
+    if (!valid_config) {
+        console.log("Invalid Website Configuration.".red);
+        return;
     }
+
+    /** Initialize the file system */
+    let initialized = await filesystem.init(website, settings);
+    if (!initialized) {
+        console.log("Failed to initialize.".red);
+        return;
+    }
+
+    /** Perform website crawl and capture */
+    let process = await browser.process(website, settings);
+
+    /** Handle errors and warnings */
+    if (process.errors.length) {
+        for (error of process.errors) {
+            console.log(`${error}`.red);
+        }
+        return;
+    }
+    if (process.warnings.length) {
+        process.warnings.forEach((warning) => {
+            console.log(`WARNING:\t${warning.message} [${warning.path}]`.yellow);
+        });
+    }
+
+    /** Optimize generated images. */
+    if (settings.baseline_mode) {
+        await images.optimizeReferences(website.label, settings);
+        return;
+    } else {
+        await images.optimizeScreenshots(website.label, settings);
+    }
+
+    /** Compare screenshots to references */
+    console.log('\nComparing to References...'.blue);
+    images.analyze(process.analysis, settings)
+        .then(async (diffs) => {
+            if (diffs.length) {
+                console.log("Differences found. Generating review output.".yellow);
+                let preparedDiffs = await output.prepareOutput(diffs, website.label, settings);
+                if (preparedDiffs) {
+                    let html = await output.generateHtml(preparedDiffs);
+                    if (html) {
+                        filesystem.saveOutput(html, settings);
+                        console.log('Output Generated ./screenshots/output/output.html.'.yellow);
+                    }
+                }
+            } else {
+                console.log("No differences found.".green);
+            }
+        }).catch((err) => {
+            console.log(`err`.red);
+        });
+
 })();

@@ -7,14 +7,17 @@ Viremo uses puppeteer to crawl defined pages and take screenshot of defined elem
 ## Usage
 
 ### Step 1
+
 Get baseline images, for reference:
+
 ```
 node viremo.js -get-baseline
 ```
 
+### Step 2
+
 Run comparison
 
-### Step 2
 ```bash
 $ node viremo.js
 ```
@@ -26,60 +29,75 @@ The output is stored in:
 |--screenshots
   |--output
   	|--homepage
-      |--fullpage.png
-      |--fullpage_ref.png
+  	  |--desktop
+        |--fullpage.png
+        |--fullpage_ref.png
     |--output.html
 ```
 
 ## Configuration
-By default Viremo will use a default configuration file that looks like this:
+By default Viremo will use a default configuration established by the config module,
+to override these settings you can add your own file to this directory:
 
-**config/websites/default.js**
-```js
-module.exports = {
-    label: "google",                /* Folder Friendly Name */
-    url: "https://about.google/",   /* Page URL of Target Website */
-    shell: [
-        "header",
-        "footer",
-        // additional css selectors
-    ],
-    paths: [
-        {
-            label: "homepage",      /* Folder Friendly Name */ 
-            path: "intl/en/",       /* Relative Path From URL */
-            shell: true,            /* Check Shell Elements On This Path */
-            elements: [             /* Unique Page Elements to Check */
-                '.home-hero-copy',
-                // additional css selectors 
-            ]
-        }
-    ]
-};
+```
+|--config
+  |--websites
+    |-- <customfile.js>
 ```
 
-Screenshots are organized by website label and path label like so:
+**customfile.js**
+
+```js
+const config = require('../config');
+
+module.exports = config.custom(
+    "example.com", 
+    "https://www.example.com/", 
+    [
+        config.viewport("desktop",1920,1080),
+        config.viewport("mobile",375,812)
+    ],
+    [
+        config.path("homepage","",true,[])
+    ],
+    [
+        "#header",
+        ".footer"
+    ]
+);
+```
+
+All properties are required. To use these settings instead of the default, specify the file in the command line:
+
+```
+$ node viremo.js -use:customfile.js -set-baseline
+```
+```
+$ node viremo.js -use:customfile.js
+```
+
+See ```viremo/config/config.js``` for more information. 
+
+Screenshots are organized by website label and path label from website configuration like so:
 
 ```
 |--screenshots
   |--new
-    |--google
+    |--example.com
       |--homepage
-        |--<selector>.png
+        |--desktop
+            |--#header.png
+            |--footer.png
+        |--mobile
+            |--#header.png
+            |--footer.png
   |--reference
-    |--google
-	  |--homepage
-        |--<selector>.png
+    |--example.com....
 ```
 
-You can add additional config files to config/websites/ and utilize them like so:
+## Testing
 
+Testing has been built into viremo. To run tests, from viremo root run:
+```$xslt
+$ npm test
 ```
-$ node viremo.js -use:newconfig.js
-```
-
-To set baseline images just add -get-baseline
-```
-$ node viremo.js -use:newconfig.js -get-baseline
-```
-
