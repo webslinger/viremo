@@ -1,4 +1,5 @@
 .idea/
 node_modules/
 screenshots/**/*
+tests/screenshots/*
 .DS_Store
