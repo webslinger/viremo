@@ -5,6 +5,7 @@
 
 const path = require('path');
 
+
 class Settings {
     /**
      * Instantiates Settings Object
@@ -12,16 +13,16 @@ class Settings {
      */
     constructor(root = null) {
         let app_dir = root || `${path.dirname(require.main.filename)}/`;
-        let shots_dir = `${app_dir}screenshots/`;
+        let shots_dir = `${app_dir}output/captures/`;
 
         this.app_dir = `${app_dir}`;
         this.shots_dir = `${shots_dir}`;
-        this.screenshot_dir = `${shots_dir}new/`;
+        this.capture_dir = `${shots_dir}new/`;
         this.reference_dir = `${shots_dir}reference/`;
-        this.output_dir = `${shots_dir}output/`;
+        this.output_dir = `${app_dir}output/results/`;
         this.baseline_mode = false;
-        this.default_config = `./app/config/websites/default`;
-        this.open_output = true;
+        this.default_config = `./app/configs/default`;
+        this.headless = true
     }
 }
 
