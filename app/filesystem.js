@@ -7,53 +7,73 @@
 const fs = require('fs-extra');
 const path = require('path');
 
+
 /**
  * Geneerates support folders for website configuration
- * @param {Object} website
- * @param {string} website.label
- * @param {Object[]} website.paths
- * @param {Object[]} website.viewports
+ * @param {Config} config
  * @param {Settings} settings
- * @param {string} settings.shots_dir
- * @param {string} settings.reference_dir
- * @param {string} settings.screenshot_dir
- * @param {string} settings.output_dir
- * @param {boolean} settings.baseline_mode
  * @returns {boolean}
  */
-exports.init = (website, settings) => {
+exports.init = async (config, settings) => {
     try {
-        if (!fs.existsSync(settings.shots_dir))
+        if (!fs.existsSync(`${settings.app_dir}output`)) {
+            fs.mkdirSync(`${settings.app_dir}output`);
+        }
+
+        if (!fs.existsSync(settings.shots_dir)) {
             fs.mkdirSync(settings.shots_dir);
+        }
 
-        if (!fs.existsSync(settings.screenshot_dir))
-            fs.mkdirSync(settings.screenshot_dir);
+        if (fs.existsSync(settings.capture_dir)) {
+            await fs.emptyDir(settings.capture_dir);
+        } else {
+            fs.mkdirSync(settings.capture_dir);
+        }
 
-        if (!fs.existsSync(settings.reference_dir))
-            fs.mkdirSync(settings.reference_dir);
+        if (!fs.existsSync(settings.output_dir)) {
+            await fs.mkdirSync(settings.output_dir);
+        }
 
-        if (!fs.existsSync(settings.output_dir))
-            fs.mkdirSync(settings.output_dir);
+        if (!fs.existsSync(`${settings.capture_dir}${config.label}`))
+            fs.mkdirSync(`${settings.capture_dir}${config.label}`);
 
-        if (!fs.existsSync(`${settings.screenshot_dir}${website.label}`))
-            fs.mkdirSync(`${settings.screenshot_dir}${website.label}`);
-
-        if (settings.baseline_mode)
-            if (fs.existsSync(`${settings.reference_dir}${website.label}`))
-                fs.emptyDir(`${settings.reference_dir}${website.label}`)
-
-        for (let path of website.paths) {
-            if (!fs.existsSync(`${settings.screenshot_dir}${website.label}/${path.label}`)) {
-                fs.mkdirSync(`${settings.screenshot_dir}${website.label}/${path.label}`);
-                for (let viewport of website.viewports) {
-                    if (!fs.existsSync(`${settings.screenshot_dir}${website.label}/${path.label}/${viewport.label}`)) {
-                        fs.mkdirSync(`${settings.screenshot_dir}${website.label}/${path.label}/${viewport.label}`);
+        for (let path of config.paths) {
+            if (!fs.existsSync(`${settings.capture_dir}${config.label}/${path.label}`)) {
+                fs.mkdirSync(`${settings.capture_dir}${config.label}/${path.label}`);
+                for (let viewport of config.viewports) {
+                    if (!fs.existsSync(`${settings.capture_dir}${config.label}/${path.label}/${viewport.label}`)) {
+                        fs.mkdirSync(`${settings.capture_dir}${config.label}/${path.label}/${viewport.label}`);
                     } else {
-                        fs.emptyDir(`${settings.screenshot_dir}${website.label}/${path.label}/${viewport.label}`);
+                        await fs.emptyDir(`${settings.capture_dir}${config.label}/${path.label}/${viewport.label}`);
                     }
                 }
             }
         }
+
+        if (!fs.existsSync(settings.reference_dir)) {
+            fs.mkdirSync(settings.reference_dir);
+        } else {
+            if (settings.baseline_mode) {
+                await fs.emptyDir(settings.reference_dir);
+            }
+        }
+
+        if (!fs.existsSync(`${settings.reference_dir}${config.label}`))
+            fs.mkdirSync(`${settings.reference_dir}${config.label}`);
+
+        for (let path of config.paths) {
+            if (!fs.existsSync(`${settings.reference_dir}${config.label}/${path.label}`)) {
+                fs.mkdirSync(`${settings.reference_dir}${config.label}/${path.label}`);
+                for (let viewport of config.viewports) {
+                    if (!fs.existsSync(`${settings.reference_dir}${config.label}/${path.label}/${viewport.label}`)) {
+                        fs.mkdirSync(`${settings.reference_dir}${config.label}/${path.label}/${viewport.label}`);
+                    } else {
+                       await fs.emptyDir(`${settings.reference_dir}${config.label}/${path.label}/${viewport.label}`);
+                    }
+                }
+            }
+        }
+
     } catch (e) {
         return false;
     }
@@ -62,50 +82,37 @@ exports.init = (website, settings) => {
 
 /**
  * Checks if reference images exist
- * @param {string} website
- * @param {string} path
- * @param {string} file
+ * @param {string} website (label)
+ * @param {string} path (label)
+ * @param {string} viewport (label)
  * @param {Settings} settings
- * @param {string} settings.reference_dir
  * @returns {boolean}
  */
-exports.referenceExists = (website, path, file, settings) => {
-    return fs.existsSync(`${settings.reference_dir}${website}/${path}/${file}`);
+exports.referenceExists = (website, path, viewport, settings) => {
+    let reference_files = fs.readdirSync(`${settings.reference_dir}${website}/${path}/${viewport}`);
+    return !!reference_files.length;
 };
 
 /**
- * Copies screenshots to references folder.
- * @param {string} website
- * @param {Settings} settings
- * @param {string} settings.screenshot_dir
- * @param {string} settings.reference_dir
- * @returns {Promise<boolean>}
- */
-exports.copyToBaseline = async (website, settings) => {
-    await fs.copy(`${settings.screenshot_dir}${website}`, `${settings.reference_dir}${website}`);
-    return !!(fs.existsSync(`${settings.reference_dir}${website}`));
-};
-
-/**
- * Copies fullpage screenshots to output directory
- * @param {string} website
+ * Copies fullpage captures to output directory
  * @param {string} path
  * @param {Settings} settings
- * @param {string} settings.reference_dir
- * @param {string} settings.screenshot_dir
- * @param {string} settings.output_dir
  * @returns {Promise<boolean>}
  */
-exports.copyToOutput = async (website, path, settings) => {
-    let reference = `${settings.reference_dir}${website}/${path}/fullpage.png`;
-    let screenshot = `${settings.screenshot_dir}${website}/${path}/fullpage.png`;
+exports.copyToOutput = async (path, settings) => {
+    let reference = `${settings.reference_dir}${path}fullpage.png`;
+    let capture = `${settings.capture_dir}${path}fullpage.png`;
 
-    await fs.copy(reference, `${settings.output_dir}${path}/fullpage_ref.png`);
-    await fs.copy(screenshot, `${settings.output_dir}${path}/fullpage.png`);
-
-    if (!fs.existsSync(`${settings.output_dir}${path}/fullpage.png`))
+    try {
+        await fs.copy(reference, `${settings.output_dir}${path}fullpage_ref.png`);
+        await fs.copy(capture, `${settings.output_dir}${path}fullpage.png`);
+    } catch (e) {
         return false;
-    else if (!fs.existsSync(`${settings.output_dir}${path}/fullpage_ref.png`))
+    }
+
+    if (!fs.existsSync(`${settings.output_dir}${path}fullpage.png`))
+        return false;
+    else if (!fs.existsSync(`${settings.output_dir}${path}fullpage_ref.png`))
         return false;
     return true;
 };
@@ -123,21 +130,20 @@ exports.emptyDirectory = async (dir) => {
  * Returns utf8 string of template
  * @param {string} template
  * @param {Settings} settings
- * @param {string} settings.app_dir
- * @returns {string} html as utf8 string
+ * @returns {string}
  */
 exports.getTemplate = (template) => {
-    return fs.readFileSync(`${process.cwd()}/app/config/templates/${template}.html`, 'utf8');
+    return fs.readFileSync(`${__dirname}/../output/templates/${template}.html`, 'utf8');
 };
 
 /**
  * Writes html file to output directory
  * @param {string} response
+ * @param {string} website
  * @param {Settings} settings
- * @param {string} settings.output_dir
  */
-exports.saveOutput = (response, settings) => {
-    fs.writeFileSync(`${settings.output_dir}output.html`, response, (err) => {
+exports.saveOutput = (response, website, settings) => {
+    fs.writeFileSync(`${settings.output_dir}${website}/output.html`, response, (err) => {
         if (err) throw err;
     });
 };

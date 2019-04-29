@@ -1,5 +1,6 @@
 .idea/
 node_modules/
-screenshots/**/*
-tests/screenshots/*
+output/captures/*
+output/results/*
+tests/output/*
 .DS_Store

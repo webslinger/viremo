@@ -8,7 +8,7 @@ const imagemin = require('imagemin');
 const imageminPngquant = require('imagemin-pngquant');
 const looksSame = require('looks-same');
 
-
+/* Local Methods */
 /**
  * Optimizes images in the given path.
  * @param {string} path
@@ -25,49 +25,38 @@ let optimize = async (path) => {
     });
 };
 
-/**
- * Optimizes reference images.
- * @param {string} website
- * @param {Settings} settings
- * @param {string} settings.reference_dir
- * @returns {Promise<boolean>}
- */
-exports.optimizeReferences = async (website, settings) => {
-    if (!website || !settings.screenshot_dir)
-        return false;
-
-    let optimized = await optimize(`${settings.reference_dir}${website}/**/*.png`);
-
-    return !!optimized;
+let isEventCapture = (image) => {
+    let eventCapture = false;
+    let events = [
+        "click","focus","tap","hover"
+    ];
+    for (let event of events) {
+        if (image.match(`:${event}`)) {
+            eventCapture = true;
+        }
+    }
+    return eventCapture;
 };
 
-/**
- * Optimizes new images.
- * @param {string} website
- * @param {Settings} settings
- * @param {string} settings.screenshot_dir
- * @returns {Promise<boolean>}
- */
-exports.optimizeScreenshots = async (website, settings) => {
-    if (!website || !settings.screenshot_dir)
-        return false;
+class Diff {
+    /**
+     * Instantiates Diff object
+     * @param {TestCase} test_case
+     * @param {string} full_path
+     */
+    constructor(test_case, full_path, obscured = false) {
+        this.case = test_case;
+        this.path = full_path;
+        this.obscured = obscured;
+    }
+}
 
-    let optimized = await optimize(`${settings.screenshot_dir}${website}/**/*.png`);
-
-    return !!optimized;
-};
 
 /**
  * Compares reference to new images to detect differences
- * @param {Object[]} analysis
- * @param {string} analysis[].image
- * @param {string} analysis[].path
- * @param {string} analysis[].viewport
- * @param {string} analysis[].website
+ * @param {TestCase[]} analysis
  * @param {Settings} settings
- * @param {string} settings.screenshot_dir
- * @param {string} settings.reference_dir
- * @returns {Promise<Object[]>} Array of diffs
+ * @returns {Promise<Diff[]>}
  */
 exports.analyze = (analysis, settings) => {
     return new Promise((resolve, reject) => {
@@ -78,18 +67,15 @@ exports.analyze = (analysis, settings) => {
         let count = 0;
 
         for (let test_case of analysis) {
-            let full_path = `${test_case.website}/${test_case.path}/${test_case.image}`;
+            let full_path = `${test_case.website}/${test_case.path}/${test_case.viewport}/${test_case.image}`;
             try {
-                looksSame(`${settings.screenshot_dir}${full_path}`, `${settings.reference_dir}${full_path}`, function(error, {equal}) {
+                looksSame(`${settings.capture_dir}${full_path}`, `${settings.reference_dir}${full_path}`, function(error, {equal}) {
                     if (error)
                         throw error;
 
                     let result = {equal};
                     if (!result.equal) {
-                        diffs.push({
-                            case: test_case,
-                            path: full_path
-                        });
+                        diffs.push(new Diff(test_case,full_path,isEventCapture(test_case.image)));
                     }
                     count++;
                     if (count === analysis.length) {
@@ -97,9 +83,39 @@ exports.analyze = (analysis, settings) => {
                     }
                 });
             } catch (e) {
-                reject('An error occurred during comparison.');
+                reject('An error occurred during comparison.' + `${e}`);
             }
         }
 
     });
+};
+
+/**
+ * Optimizes reference images.
+ * @param {string} website (label)
+ * @param {Settings} settings
+ * @returns {Promise<boolean>}
+ */
+exports.optimizeReferences = async (website, settings) => {
+    try {
+        let optimized = await optimize(`${settings.reference_dir}${website}/**/*.png`);
+        return !!optimized.length;
+    } catch (e) {
+        return false;
+    }
+};
+
+/**
+ * Optimizes new images.
+ * @param {string} website
+ * @param {Settings} settings
+ * @returns {Promise<boolean>}
+ */
+exports.optimizeCaptures = async (website, settings) => {
+    try {
+        let optimized = await optimize(`${settings.capture_dir}${website}/**/*.png`);
+        return !!optimized.length;
+    } catch (e) {
+        return false;
+    }
 };
