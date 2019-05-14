@@ -6,29 +6,34 @@
 /* Local Dependencies */
 let filesystem = require('./filesystem');
 
+class FullpageDiff {
+    /**
+     * Instantiates FullpageDiff object
+     * @param path
+     */
+    constructor(path, obscured) {
+        this.path = path;
+        this.reference = `${path}fullpage_ref.png`;
+        this.capture = `${path}fullpage.png`;
+        this.obscured = obscured;
+    }
+}
 
 /**
  * Prepares output directory and input data
- * @param {Object[]} diffs
- * @param {string} website
+ * @param {Diff[]} diffs
  * @param {Settings} settings
- * @param {string} settings.reference_dir
- * @param {string} settings.screenshot_dir
- * @param {string} settings.output_dir
- * @returns {Object[]} [{path: "path", reference: "path/fullpage_ref.png", screenshot: "path/fullpage.png"},...]
+ * @returns {FullpageDiff[]}
  */
-exports.prepareOutput = async (diffs, website, settings) => {
+exports.prepareOutput = async (diffs, settings) => {
 
     let fullpageDiffs = [];
+    let obscured = exports.hasObscuredCaptures(diffs);
     let paths = exports.extractDiffPaths(diffs);
 
     for (let path of paths) {
-        await filesystem.copyToOutput(website, path, settings);
-        fullpageDiffs.push({
-            path: path,
-            reference: `${path}/fullpage_ref.png`,
-            screenshot: `${path}/fullpage.png`
-        });
+        await filesystem.copyToOutput(path, settings);
+        fullpageDiffs.push(new FullpageDiff(path, obscured));
     }
 
     return fullpageDiffs;
@@ -37,20 +42,21 @@ exports.prepareOutput = async (diffs, website, settings) => {
 /**
  * Prepares output page html
  * @param {Object[]} diffs
- * @param {Settings} settings
- * @param {string} settings.app_dir
- * @returns {Promise<string>} rendered html
+ * @param {string} website
+ * @returns {Promise<string>}
  */
-exports.generateHtml = async (diffs) => {
+exports.generateHtml = async (diffs, website) => {
 
     let page_tmpl = filesystem.getTemplate('output');
     let switcher_tmpl = filesystem.getTemplate('snippets/switcher');
     let button_tmpl = '<button class="{activate}" data-target-id="{path}">{path}</button>';
     let title = `Test Output: ${new Date().toDateString()}`;
     let activate = "active";
+    let obscureWarning = '';
 
     let tabs = "";
     for (let diff of diffs) {
+        diff.path = diff.path.replace(`${website}/`,'');
         tabs += exports.render(button_tmpl, {
             path: diff.path,
             activate: activate
@@ -60,11 +66,17 @@ exports.generateHtml = async (diffs) => {
 
     let switchers = "";
     for (let diff of diffs) {
+        diff.reference = diff.reference.replace(`${website}/`,'');
+        diff.capture = diff.capture.replace(`${website}/`,'');
+        if (diff.obscured)
+            obscureWarning = "Some diffs may not be visible due to trigger events. Review diffs in results folder.";
         switchers += exports.render(switcher_tmpl, {
             reference: diff.reference,
-            new: diff.screenshot,
-            path: diff.path
+            new: diff.capture,
+            path: diff.path,
+            obscure_warning: obscureWarning
         });
+        obscureWarning = '';
     }
 
     return exports.render(page_tmpl, {
@@ -76,17 +88,15 @@ exports.generateHtml = async (diffs) => {
 
 /**
  * Returns reorganized collection of diffs by path since we are using 1 fullpage shot for each path
- * @param {Object[]} diffs
- * @param {Object} diffs[].case
- * @param {string} diffs[].case.path
- * @param {string} diffs[].case.viewport
- * @returns {Object[]} ["path/viewport/",...]
+ * @param {Diff[]} diffs
+ * @returns {string[]}
  */
 exports.extractDiffPaths = (diffs) => {
 
     let paths = [];
-    for (diff of diffs) {
-        let path = `${diff.case.path}/${diff.case.viewport}`;
+    for (let diff of diffs) {
+        let path = diff.path;
+        path = path.replace(diff.case.image,'');
         if (!paths.includes(path)) {
             paths.push(path);
         }
@@ -96,10 +106,25 @@ exports.extractDiffPaths = (diffs) => {
 };
 
 /**
- * Replaces template vars with values
+ * Checks for potentially obscured captures
+ * @param diffs
+ * @returns {boolean}
+ */
+exports.hasObscuredCaptures = (diffs) => {
+    let hasObscured = false;
+    for (let diff of diffs) {
+        if (diff.obscured) {
+            hasObscured = true;
+        }
+    }
+    return hasObscured;
+};
+
+/**
+ * Replaces template vars with values and returns html
  * @param {string} template
  * @param {Object} vars - any amount of key/value pairs as object
- * @returns {string} rendered html
+ * @returns {string}
  */
 exports.render = (template, vars) => {
 

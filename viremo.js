@@ -8,9 +8,9 @@ let filesystem = require('./app/filesystem');
 let output = require('./app/output');
 
 // runtime settings
-let settings = require('./app/config/settings').default;
+let settings = require('./app/settings').default;
 let websiteConfig = settings.default_config;
-let website = null;
+let config = null;
 
 /** Process CLI Arguments */
 process.argv.forEach(function(val,index,array) {
@@ -18,13 +18,13 @@ process.argv.forEach(function(val,index,array) {
         settings.baseline_mode = true;
     }
     if (val.match(/\-use\:.*/)) {
-        websiteConfig = `./app/config/websites/${val.split(':')[1].trim()}`;
+        websiteConfig = `./app/configs/${val.split(':')[1].trim()}`;
     }
 });
 
 /** Set the website configuration. */
 try {
-    website = require(websiteConfig);
+    config = require(websiteConfig);
 } catch (e) {
     console.log(`Error: Cannot find module '${websiteConfig}' :: ${e}`.red);
     return;
@@ -34,21 +34,24 @@ try {
 (async () => {
 
     /** Validate the config. */
-    let valid_config = browser.validate(website);
+    console.log('\nValidating Configuration...'.blue);
+    let valid_config = browser.validate(config);
     if (!valid_config) {
         console.log("Invalid Website Configuration.".red);
         return;
     }
 
     /** Initialize the file system */
-    let initialized = await filesystem.init(website, settings);
+    console.log('\nInitializing filesystem...'.blue);
+    let initialized = await filesystem.init(config, settings);
     if (!initialized) {
         console.log("Failed to initialize.".red);
         return;
     }
 
     /** Perform website crawl and capture */
-    let process = await browser.process(website, settings);
+    console.log(`\nCrawling and Capturing "${config.label}"...`.blue);
+    let process = await browser.process(config, settings);
 
     /** Handle errors and warnings */
     if (process.errors.length) {
@@ -65,24 +68,24 @@ try {
 
     /** Optimize generated images. */
     if (settings.baseline_mode) {
-        await images.optimizeReferences(website.label, settings);
+        await images.optimizeReferences(config.label, settings);
         return;
     } else {
-        await images.optimizeScreenshots(website.label, settings);
+        await images.optimizeCaptures(config.label, settings);
     }
 
-    /** Compare screenshots to references */
-    console.log('\nComparing to References...'.blue);
+    /** Compare captures to references */
+    console.log('\nComparing Captures to References...'.blue);
     images.analyze(process.analysis, settings)
         .then(async (diffs) => {
             if (diffs.length) {
                 console.log("Differences found. Generating review output.".yellow);
-                let preparedDiffs = await output.prepareOutput(diffs, website.label, settings);
+                let preparedDiffs = await output.prepareOutput(diffs, settings);
                 if (preparedDiffs) {
-                    let html = await output.generateHtml(preparedDiffs);
+                    let html = await output.generateHtml(preparedDiffs, config.label);
                     if (html) {
-                        filesystem.saveOutput(html, settings);
-                        console.log('Output Generated ./screenshots/output/output.html.'.yellow);
+                        filesystem.saveOutput(html, config.label, settings);
+                        console.log(`Output Generated ./output/results/${config.label}/output.html.`.yellow);
                     }
                 }
             } else {

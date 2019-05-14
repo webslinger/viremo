@@ -7,6 +7,9 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>{title}</title>
     <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
         div.new { display: none; }
         div.overlay { display: none; position: relative; }
         div.overlay img + img {
@@ -27,6 +30,11 @@
         .switcher div:first-child {
             margin-bottom: 12px;
             text-align: right;
+        }
+        .switcher .warning {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: red;
         }
         .switcher button {
             background: black;
