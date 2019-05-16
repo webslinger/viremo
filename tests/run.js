@@ -119,9 +119,10 @@ describe('app/filesystem.js', function() {
     });
 });
 
-describe('app/browser.js', function () {
+describe.only('app/browser.js', function () {
 
     let filesystem = require('../app/filesystem');
+    this.timeout(60000);
 
     describe('validate()', function() {
 
@@ -166,7 +167,6 @@ describe('app/browser.js', function () {
 
         let browser = require('../app/browser');
 
-        this.timeout(15000);
         it('Should return false on bad response', async () => {
             const _browser = await puppeteer.launch({ignoreHTTPSErrors: true});
             let page = await browser.newPage(_browser, config.viewport('test',1024,768));
@@ -174,7 +174,6 @@ describe('app/browser.js', function () {
             await _browser.close();
             assert.strictEqual(result, false);
         });
-        this.timeout(15000);
         it('Should return true on good response', async () => {
             const _browser = await puppeteer.launch({ignoreHTTPSErrors: true});
             let page = await browser.newPage(_browser, config.viewport('test',1024,768));
@@ -232,7 +231,6 @@ describe('app/browser.js', function () {
                 false
             );
         });
-        this.timeout(60000);
         it('Should return true if no warnings were encountered', async () => {
             const _browser = await puppeteer.launch({ignoreHTTPSErrors: true});
             let page = await browser.newPage(_browser, config.viewport('test',1024,768));
@@ -260,7 +258,6 @@ describe('app/browser.js', function () {
     describe('captureSelector()', function() {
 
         let browser = require('../app/browser');
-        this.timeout(60000);
 
         it('Should return true otherwise', async () => {
             const _browser = await puppeteer.launch({ignoreHTTPSErrors: true});
@@ -311,7 +308,6 @@ describe('app/browser.js', function () {
     describe('captureFullpage()', function() {
 
         let browser = require('../app/browser');
-        this.timeout(5000);
 
         it('Should return Buffer when successful', async () => {
             const _browser = await puppeteer.launch({ignoreHTTPSErrors: true});
@@ -351,7 +347,6 @@ describe('app/browser.js', function () {
     describe('process()', function() {
 
         let browser = require('../app/browser');
-        this.timeout(60000);
 
         it('Should return response object when complete (baseline mode)', async () => {
             settings.baseline_mode = true;
@@ -402,7 +397,6 @@ describe('app/images.js', function() {
     });
 
     describe('analyze()', function() {
-        this.timeout(5000);
         it('Should return an error if an error is encountered', (done) => {
             images.analyze([{
                 website: "google",
