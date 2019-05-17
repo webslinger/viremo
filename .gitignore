@@ -3,4 +3,5 @@ node_modules/
 output/captures/*
 output/results/*
 tests/output/*
+dist/
 .DS_Store
