@@ -1,8 +1,8 @@
-require('babel-polyfill');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const VueLoaderPlugin = require('vue-loader/lib/plugin');
 const webpack = require('webpack');
 const fs = require('fs-extra');
+const browser = require('./app/browser');
 
 module.exports = {
   entry: './ui/main.js',
@@ -41,6 +41,29 @@ module.exports = {
               error: 'Config not found.'
             }));
           }
+        });
+
+        app.get('/v1/configs/validate/:config', async (request, response) => {
+            let config = request.params.config;
+            var valid = await browser.validate(config);
+            response.send(valid);
+        });
+
+        app.put('/v1/configs/save', async (request, response) => {
+          let filename = request.query.file;
+          let contents = JSON.parse(request.query.contents);
+          let file_contents = "" +
+            "const config = require('../config');" +
+            "module.exports = config.custom(" +
+            `'${contents.label}',` +
+            `'${contents.url}',` +
+            `${JSON.stringify(contents.viewports)},` +
+            `${JSON.stringify(contents.paths)},` +
+            `${JSON.stringify(contents.actions)},` +
+            `${JSON.stringify(contents.shell)}` +
+            ");";
+          await fs.writeFileSync(`./app/configs/${filename}`, file_contents);
+          response.send('success');
         });
       }
   },

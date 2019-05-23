@@ -8,16 +8,16 @@ class Path {
      * Instantiates Path object
      * @param {string} label
      * @param {string} path
-     * @param {boolean|string} shell - true,false,{viewport label}
-     * @param {string[]} elements - css selectors
-     * @param {Trigger[]} triggers
+     * @param {boolean} use_shell
+     * @param {string[]} selectors
+     * @param {Action[]} actions
      */
-    constructor(label, path, shell, elements, triggers) {
+    constructor(label, path, use_shell, selectors, actions = []) {
         this.label = label;
         this.path = path;
-        this.shell = true;
-        this.elements = elements;
-        this.triggers = triggers;
+        this.shell = use_shell;
+        this.selectors = selectors;
+        this.actions = actions;
     }
 }
 
@@ -30,24 +30,30 @@ class Viewport {
      */
     constructor(label, width, height) {
         this.label = label;
-        this.dims = [width, height]
+        this.width = width;
+        this.height = height;
     }
 }
 
-class Trigger {
+class Action {
     /**
      * Interaction Instructions
      * @param {string} event - "hover","focus","tap","click"
+     * @param {string} label - "describe action"
      * @param {string} selector - css selector
-     * @param {string} when - "pre","post"
-     * @param {number} wait - delay before capture (optional)
+     * @param {number} wait - delay after action
      */
-    constructor(event, selector, when, capture = true, wait = 200) {
+    constructor(event, label, selector, wait = 200) {
         this.selector = selector;
         this.event = event;
-        this.when = when;
+        this.label = label;
         this.wait = wait;
-        this.capture = true;
+    }
+}
+
+class Selector {
+    constructor(selector) {
+        this.value = selector
     }
 }
 
@@ -61,12 +67,27 @@ class Config {
      * @param {Path[]} paths
      * @param {string[]} shell - css selectors
      */
-    constructor(label, url, viewports, paths, shell) {
+    constructor(label, url, viewports, paths, actions, shell) {
         this.label = label;
         this.url = url;
         this.viewports = viewports;
         this.paths = paths;
+        this.actions = actions;
         this.shell = shell;
+
+        /* Set IDs */
+        for (let v = 0; v < this.viewports.length; v++) {
+            this.viewports[v].id = v;
+        }
+        for (let p = 0; p < this.paths.length; p++) {
+            this.paths[p].id = p;
+        }
+        for (let a = 0; a < this.actions.length; a++) {
+            this.actions[a].id = a;
+        }
+        for (let s = 0; s < this.shell.length; s++) {
+            this.shell[s].id = s;
+        }
     }
 }
 
@@ -86,23 +107,23 @@ exports.viewport = function (label, width, height) {
  * @param {string} label
  * @param {string} path
  * @param {boolean|string} shell - true,false,{viewport label}
- * @param {string[]} elements - css selectors
- * @param {Trigger[]} triggers (optional)
+ * @param {string[]} selectors - css selectors
+ * @param {Action[]} actions (optional)
  * @returns {Path}
  */
-exports.path = function (label, path, shell, elements, triggers = []) {
-    return new Path(label,path,shell,elements,triggers);
+exports.path = function (label, path, use_shell, selectors, actions = []) {
+    return new Path(label,path,use_shell,selectors,actions);
 };
 
 /**
- * Returns new Trigger object
+ * Returns new Action object
  * @param {string} event - "hover","focus","tap","click"
+ * @param {string} label - "describe action"
  * @param {string} selector - css selector
- * @param {string} when - "pre","post"
  * @param {number} wait - delay before capture (optional)
  */
-exports.trigger = (event, selector, when, wait = 200) => {
-    return new Trigger(event, selector, when, wait)
+exports.action = (event, label, selector, wait = 200) => {
+    return new Action(event, label, selector, wait)
 };
 
 /**
@@ -111,11 +132,12 @@ exports.trigger = (event, selector, when, wait = 200) => {
  * @param {string} url
  * @param {Viewport[]} viewports
  * @param {Path[]} paths
- * @param {string[]} shell - css selectors
+ * @param {Action[]} actions
+ * @param {string[]} shell
  * @returns {Config}
  */
-exports.custom = function(label, url, viewports, paths, shell) {
-    return new Config(label, url, viewports, paths, shell);
+exports.custom = function(label, url, viewports, paths, actions, shell) {
+    return new Config(label, url, viewports, paths, actions, shell);
 };
 
 exports.default = new Config(
@@ -134,22 +156,22 @@ exports.default = new Config(
             true,           // capture shell elements
             [
                 // page elements to capture css selectors
-                ".home-hero-copy",
-                '.carousel-placeholder'
+                new Selector(".home-hero-copy"),
+                new Selector('#carousel-placeholder')
             ],
-            [
-                // events to trigger and capture on page
-                new Trigger(
-                    'hover', // event (hover,click,tap,focus)
-                    '.carousel-placeholder', // css selector for target element
-                    'pre' // when to capture, before or after main captures ("pre" or "post")
-                )
-            ]
+            [0]
+        )
+    ],
+    [
+        new Action(
+            'hover',
+            'hover carousel',
+            '.carousel-placeholder'
         )
     ],
     [
         // site shell element css selectors (elements on all pages)
-        "header",
-        "footer"
+        new Selector("header"),
+        new Selector("footer")
     ]
 );

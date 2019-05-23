@@ -1,12 +1,9 @@
+import BabelPolyfill from 'babel-polyfill';
 import Vue from 'vue';
 import VueRouter from 'vue-router';
-import App from './App.vue';
-import Configs from './components/Configs.vue'
-import Home from './components/Home.vue'
-
-let sessionVars = {
-    configs: localStorage.getItem('vui_configs') || ['test','test']
-}
+import App from './app.vue';
+import Configs from './components/pages/configs.page.vue';
+import Home from './components/pages/home.page.vue';
 
 Vue.use(VueRouter);
 

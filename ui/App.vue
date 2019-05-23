@@ -5,10 +5,12 @@
         </header>
         <nav>
             <router-link to="/">Home</router-link>
-            <router-link to="/Configs">Results</router-link>
+            <router-link to="/Configs">Websites</router-link>
         </nav> 
         <main>
+          <keep-alive>
             <router-view></router-view>
+          </keep-alive>
         </main>
         <footer>
             &copy; 2019
@@ -17,13 +19,6 @@
 </template>
 
 <script>
-export default {
-  data() {
-    return {
-      message: 'Hello World Test',
-    };
-  },
-};
 </script>
 
 <style>
