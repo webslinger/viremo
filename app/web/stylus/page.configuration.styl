@@ -1,0 +1,137 @@
+/* Page Styles */
+#configs 
+  font-size 16px
+  display grid
+  grid-template-columns 20% 80%
+  #config
+    padding 20px
+    font-size 14px
+  input 
+    border 0
+    background _black
+    color _white
+    padding 5px 10px
+    &[readonly]
+      padding 0
+      background none
+      &:focus
+        outline 0
+  h3
+    color _orange
+  table 
+    width 100%
+    border-collapse collapse
+    box-shadow 1px 1px 3px rgba(0,0,0,0.25)
+    label 
+      font-size 12px
+      font-weight bold
+    input 
+      vertical-align middle
+    th
+      text-align left
+      background gray5
+      padding 5px 10px
+    td 
+      vertical-align top
+      padding 5px 10px
+    h3 
+      button 
+        float right
+        border none
+    tfoot
+      td
+        background gray5
+        button  
+          float right
+          background _cyan
+          color _black
+          padding 5px 10px
+          &:hover
+            background darken(_cyan,10%)
+  .selectors 
+    i.material-icons 
+      font-size 18px
+    .selector 
+      display block
+      width 200px
+      margin-right 5px
+      font-size 13px
+      background _black 
+      color pale2
+      box-shadow 1px 1px 3px rgba(255,255,255, 0.2)
+      border-radius 3px
+      padding 3px
+      margin-bottom 6px
+      button 
+        background none
+        float right
+      i.material-icons 
+        font-size 12px
+      input 
+        border 0
+        background none
+        font-size 13px
+        color pale2
+        font-family 'Courier New', Courier, monospace
+        max-width calc(100% - 25px);
+
+  #controls 
+    text-align right
+    padding-bottom 12px
+    margin-bottom 12px
+    border-bottom 1px solid black
+    &:before,&:after 
+      content ' '
+      display table
+    &:after
+      clear both
+    h2
+      font-size 24px
+      color _violet
+      float left
+      margin 0
+    .validator
+      border-radius 3px
+      padding 5px 10px
+      box-sizing border-box
+      border 1px solid _green
+      color _green
+      font-size 14px
+      display inline-block
+      i 
+        line-height 14px
+        font-size 14px
+        width 14px
+        vertical-align middle
+      &.invalid
+        color _red
+        border-color _red
+    .errors
+      clear both
+      padding 5px 10px
+      margin 10px 0 0 0
+      background _red
+      border-radius 3px
+      text-align left
+    .fade-enter-active, .fade-leave-active
+      transition opacity .5s
+    .fade-enter, .fade-leave-to
+      opacity 0
+
+  #shell, table
+    button 
+      padding 3px
+      background none
+      color _cyan
+      vertical-align middle
+
+  #viewports
+    tbody
+      tr:nth-child(odd)
+        td
+          background rgba(0,0,0,0.05)
+  #paths
+    tbody
+      tr.odd
+        td
+          background rgba(0,0,0,0.05)

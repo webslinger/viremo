@@ -1,0 +1,61 @@
+#fullpage
+  margin 20px
+  padding 80px 20px 20px 20px
+  position relative
+  background _black
+  box-shadow -1px -1px 3px rgba(0,0,0,0.25)
+  .controls
+    width 100%
+    box-sizing border-box
+    position absolute
+    top 0
+    left 0
+    padding 20px
+    line-height 20px
+    background gray5
+    label
+      padding 5px
+      cursor pointer
+      background _yellow
+      color _black
+      font-size 14px
+      margin-right 6px
+      border-radius 3px
+      &.active
+        background darken(_yellow,20%)
+    .filters
+      float right
+      text-align right
+      label
+        background _cyan
+        &.active
+          background darken(_cyan,20%)
+    input[type="radio"] 
+      display none
+.fullpage
+  position relative
+  img 
+    max-width 100%
+    display block
+    margin 0 auto
+  &.overlay
+    img + img 
+      position absolute 
+      top 0
+      left 50%
+      transform translate(-50%,0)
+      opacity 0.5     
+    .sepia 
+      img + img 
+        -webkit-filter sepia(1)
+        filter sepia(1)
+    .saturated
+      img + img 
+        -webkit-filter saturate(8)
+        filter saturate(8)
+  &.original
+    img + img 
+      display none
+  &.new
+    img:first-child
+      display none
