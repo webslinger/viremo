@@ -10,8 +10,8 @@
         @save="save"
         @del="del"
       />
-      <div><input type="text" :readonly="readonly" v-model="config_source.label"></div>
-      <div><input type="text" :readonly="readonly" v-model="config_source.url"></div>
+      <div><label><span>Name:</span> <input type="text" :readonly="readonly" v-model="config_source.label"></label></div>
+      <div><label><span>URL:</span> <input type="text" :readonly="readonly" v-model="config_source.url"></label></div>
       <shell-control v-if="config_source.shell.length"
         :data.sync="config_source.shell"
         :readonly.sync="readonly"
@@ -26,19 +26,19 @@
         @add="add($event)"
         @remove="remove($event)"
       />
-      <path-control
-        :data.sync="config_source.paths"
-        :actions="config_source.actions"
-        :readonly.sync="readonly"
-        @revert="config_source.paths = $event"
-        @add="add($event)"
-        @remove="remove($event)"
-      />
       <action-control
         :data.sync="config_source.actions"
         :readonly.sync="readonly"
         :paths.sync="config_source.paths"
         @revert="config_source.actions = $event"
+        @add="add($event)"
+        @remove="remove($event)"
+      />
+      <path-control
+        :data.sync="config_source.paths"
+        :actions="config_source.actions"
+        :readonly.sync="readonly"
+        @revert="config_source.paths = $event"
         @add="add($event)"
         @remove="remove($event)"
       />

@@ -27,6 +27,7 @@
             <tr v-bind:key="path.id + '_b'" :class="{odd: (index+1)%2}">
                 <td v-bind:colspan="(readonly) ? '4' : '5'">
                     <div>
+                        <h4>Actions</h4>
                         <label v-for="action in actions" :key="action.id">
                             <input type="checkbox" :disabled="readonly" :checked="isInPath(action.id, path)" @change="managePathAction($event, action.id, path)"> {{action.label}}
                         </label>

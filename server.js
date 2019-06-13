@@ -113,7 +113,7 @@ io.on('connection', function (socket) {
           socket.emit('progress-update', { warnings: progress.warnings });
         }
         if (baseline_mode) {
-          socket.emit('end-test', { success: true });
+          socket.emit('end-test', { success: true, performance: progress.performance });
           await images.optimizeReferences(config.label, settings);
         } else {
           await images.optimizeCaptures(config.label, settings);
@@ -121,7 +121,7 @@ io.on('connection', function (socket) {
           images.analyze(progress.analysis, settings)
             .then(async (diffs) => {
               if (diffs.length) {
-                socket.emit('end-test', { diffs: diffs });
+                socket.emit('end-test', { success: true, analysis: progress.analysis, diffs: diffs });
               } else {
                 socket.emit('end-test', { success: true, analysis: progress.analysis })
               }

@@ -16,8 +16,13 @@
       background none
       &:focus
         outline 0
-  h3
+  h3, label > span
     color _orange
+  label > span
+    font-weight bold
+    display inline-block
+    width 60px
+    font-size 1.17em
   table 
     width 100%
     border-collapse collapse
@@ -79,7 +84,6 @@
     text-align right
     padding-bottom 12px
     margin-bottom 12px
-    border-bottom 1px solid black
     &:before,&:after 
       content ' '
       display table
@@ -124,12 +128,13 @@
       background none
       color _cyan
       vertical-align middle
+      box-shadow none
 
   #viewports
     tbody
       tr:nth-child(odd)
         td
-          background rgba(0,0,0,0.05)
+          background rgba(0,0,0,0.08)
   #paths
     tbody
       tr.odd
