@@ -1,0 +1,81 @@
+#result 
+  padding 20px
+  h2
+    color _violet
+    margin-top 0
+  h3 
+    font-weight normal
+  button.active 
+    background darken(_yellow,20%)
+  .controls, .filters
+    display block
+    width 50%
+    float left
+    > label
+      padding 5px
+      cursor pointer
+      background _yellow
+      color _black
+      font-size 14px
+      margin-right 6px
+      border-radius 3px
+      display inline-block
+      &.active
+        background darken(_yellow,20%)
+      input 
+        display none
+  .filters
+    float right
+    text-align right
+    > label 
+      background _cyan
+      &.active 
+        background darken(_cyan,20%)
+  .viewports, .paths
+    margin-bottom 12px
+  .diff
+    padding 12px
+    background _black
+    margin-bottom 12px
+    border-radius 3px
+    box-shadow -1px -1px 3px rgba(0,0,0,0.25)
+    > label:first-child
+      display block
+      font-size 15px
+      color pale2
+      font-family 'Courier New', Courier, monospace
+      margin-bottom 12px
+      background gray5
+      padding 12px
+      margin-left: -12px;
+      margin-top: -12px;
+      width 100%
+  .images
+    clear both
+    padding-top 12px
+    img 
+      max-width 100%
+      display block
+      margin 0 auto
+    &.overlay 
+      position relative
+      img + img 
+        position absolute
+        top 12px
+        left 50%
+        transform translate(-50%,0)
+        opacity 0.5
+      .sepia 
+        img + img 
+          -webkit-filter sepia(1)
+          filter sepia(1)
+      .saturated
+        img + img 
+          -webkit-filter saturate(8)
+          filter saturate(8)
+    &.original
+      img + img 
+        display none 
+    &.new
+      img:first-child
+        display none

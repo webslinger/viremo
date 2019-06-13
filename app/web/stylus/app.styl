@@ -1,0 +1,128 @@
+/** VARS **/
+gray6 =   #002b36;
+gray5 =   #073642;
+gray4 =   #586e75;
+gray3 =   #657b83;
+gray2 =   #839496;
+gray1 =   #93a1a1;
+pale2 =   #eee8d5;
+_white =   #fdf6e3;
+_black =   #001122;
+_yellow =  lighten(#b58900,50%);
+_orange =  lighten(#cb4b16,50%);
+_red =     #dc322f;
+_magenta = #d33682;
+_violet =  lighten(#6c71c4,20%);
+_blue =    #268bd2;
+_cyan =    lighten(#2aa198,20%)
+_green =   lighten(#859900,10%);
+
+/** Shell **/
+body, html 
+  height 100% 
+  padding 0
+  margin 0
+  background gray6;
+  color _white;
+  font-family Arial, Helvetica, sans-serif;
+
+button
+  padding 5px
+  cursor pointer
+  background _yellow
+  color _black
+  font-size 14px
+  margin-right 6px
+  border-radius 3px
+  border 0 
+  box-shadow 1px 1px 3px rgba(0,0,0,0.2)
+  &:hover
+    background darken(_yellow,10%)
+
+a 
+  text-decoration none
+  &,&:visited
+    color _cyan
+
+#viremo
+  min-height 100%
+
+  /** Header **/
+  > header
+    padding 24px 20px
+    h1
+      margin 0
+      font-weight normal
+    .logo
+      float left
+      margin-right 18px
+      div
+        width 24px
+        height 24px
+        outline 3px solid _red
+        position relative
+        &:after
+          content ' '
+          display block
+          width 24px
+          height 24px
+          opacity 0.75
+          outline 3px solid _red
+          position absolute
+          transform rotate(15deg)
+
+  /** Navigation **/
+  > nav
+    padding 12px 20px
+    box-shadow 0 1px 5px rgba(0,0,0,0.15)
+    background gray5 
+    a 
+      color _white
+      text-decoration none
+      font-size 14px
+      text-transform uppercase
+      margin-right 12px
+
+  /** Footer **/
+  > footer
+    padding 20px
+    font-size 12px
+    background gray5
+    box-shadow 0 -1px 5px rgba(0,0,0,0.15)
+
+  /** Main Content Area **/
+  > main
+    padding 0 
+    height calc(100% - 189px)
+    .menu
+      background _black
+      padding 24px
+      h2 
+        font-size 16px
+      ul
+        list-style-type none
+        padding-left 0
+      li
+        + li
+          margin-top 12px
+    .content
+      padding 24px
+      h2 
+        text-transform capitalize
+        margin 0
+      h3
+        margin 0
+        margin 12px 0
+      table
+        border-collapse collapse
+        border 1px solid lightgray
+        width 100%
+      td,th
+        padding 6px 
+
+/** END SHELL **/
+
+@import "page.analysis"
+@import "page.results"
+@import "page.fullpage"
+@import "page.configuration"
